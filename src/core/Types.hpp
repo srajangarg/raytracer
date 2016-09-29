@@ -46,8 +46,8 @@ class Ray
     Vec3 e_;
     Vec3 d_;
     double min_t_;
-
-    Ray(Vec3 const & start, Vec3 const & dir, double min_t);
+    double mu_;
+    Ray(Vec3 const & start, Vec3 const & dir, double min_t, double mu = 1.0);
 
   public:
 
@@ -55,10 +55,9 @@ class Ray
     Ray(Ray const & r);
 
     static Ray fromOriginAndDirection(Vec3 const & start, Vec3 const & dir,
-                                      double min_t = std::numeric_limits<double>::infinity());
+                                      double min_t = std::numeric_limits<double>::infinity(), double mu = 1.0);
     static Ray fromOriginAndEnd(Vec3 const & start, Vec3 const & end,
-                                double min_t = std::numeric_limits<double>::infinity());
-
+                                double min_t = std::numeric_limits<double>::infinity(), double mu = 1.0);
     // Special functions
 
     void transform(Mat4 const & xf);
@@ -69,11 +68,13 @@ class Ray
     Vec3 const & start() const { return e_; }
     Vec3 const & direction() const { return d_; }
     double minT() const { return min_t_; }
+    double mu() const { return mu_; }
 
     // Setter functions
-
     void setMinT(double t);
 };
+
+// double Ray::mu_ = 1;
 
 /****************************************************************
  *                                                              *
@@ -212,11 +213,12 @@ inline Ray::Ray()
 {
 }
 
-inline Ray::Ray(Vec3 const & start, Vec3 const & dir, double min_t)
+inline Ray::Ray(Vec3 const & start, Vec3 const & dir, double min_t, double mu)
 {
   e_ = start;
   d_ = dir;
   min_t_ = min_t;
+  mu_ = mu;
 }
 
 inline Ray::Ray(Ray const & r)
@@ -224,16 +226,19 @@ inline Ray::Ray(Ray const & r)
   e_ = r.e_;
   d_ = r.d_;
   min_t_ = r.min_t_;
+  mu_ = r.mu_;
 }
 
-inline Ray Ray::fromOriginAndDirection(Vec3 const & start, Vec3 const & dir, double min_t)
+inline Ray Ray::fromOriginAndDirection(Vec3 const & start, Vec3 const & dir, 
+                                       double min_t, double mu)
 {
-  return Ray(start, dir, min_t);
+  return Ray(start, dir, min_t, mu);
 }
 
-inline Ray Ray::fromOriginAndEnd(Vec3 const & start, Vec3 const & end, double min_t)
+inline Ray Ray::fromOriginAndEnd(Vec3 const & start, Vec3 const & end, 
+                                 double min_t, double mu)
 {
-  return Ray(start, end - start, min_t);
+  return Ray(start, end - start, min_t, mu);
 }
 
 // Special functions

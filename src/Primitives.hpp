@@ -11,6 +11,8 @@
 
 #include "Globals.hpp"
 
+class AABB;
+
 /** Interface for a scene primitive (e.g. a sphere). */
 class Primitive
 {
@@ -61,6 +63,23 @@ class Primitive
     Material m_;
 };
 
+/** Axis aligned Bounding box **/
+class AABB
+{
+  public:
+    double xi, xf, yi, yf, zi, zf;
+    Primitive * p;
+
+    AABB(double x1, double x2, double y1, double y2, double z1, double z2)
+        : xi(x1), xf(x2), yi(y1), yf(y2), zi(z1), zf(z2), p(NULL) {}
+
+    AABB(double x1, double x2, double y1, double y2, 
+         double z1, double z2, Primitive * pr)
+        : xi(x1), xf(x2), yi(y1), yf(y2), zi(z1), zf(z2), p(pr) {}
+
+    bool intersect(Ray & ray) const;
+};
+
 /** A sphere primitive. */
 class Sphere : public Primitive
 {
@@ -70,6 +89,7 @@ class Sphere : public Primitive
 
     bool intersect(Ray & ray) const;
     Vec3 calculateNormal(Vec3 const & position) const;
+    AABB getBoundingBox() const;
 
   private:
     double r_;
@@ -89,6 +109,7 @@ class Triangle : public Primitive
 
     bool intersect(Ray & ray) const;
     Vec3 calculateNormal(Vec3 const & position) const;
+    AABB getBoundingBox() const;
 
   private:
     Vec3 verts[3];

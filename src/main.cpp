@@ -4,7 +4,7 @@
 #include "Frame.hpp"
 #include "Lights.hpp"
 #include "core/Scene.hpp"
-
+#define EPS 1e-6
 using namespace std;
 
 //****************************************************
@@ -45,9 +45,11 @@ getShadedColor(Primitive const & primitive, Vec3 const & pos, Ray const & ray)
     auto inter = world->intersect(shadow);
 
     // an intersection occured, don't add up spec and lamb components
-    if (inter != NULL)
-      if (not use_dist or (shadow.minT() > 0 and shadow.minT() < 1))
+    if (inter != NULL){
+      if (not use_dist or (shadow.minT() > 0 and shadow.minT() < 1)) {
         continue;
+      }
+    }
 
     // normal and incidence vectors, light color
     n = primitive.calculateNormal(pos);
@@ -68,9 +70,44 @@ getShadedColor(Primitive const & primitive, Vec3 const & pos, Ray const & ray)
     spec += ms * S * I * pow(std::max(-r*u, (double)0), msp);
   }
 
-  return spec + amb + lamb;
+  return amb + spec + lamb;
 }
 
+inline Ray
+getReflectedRay(Primitive *z, Vec3 &pos, Ray &ray)
+{
+  Vec3 r, n, i;
+  n = z->calculateNormal(pos);
+  i = ray.direction();
+  r = i - 2*((i * n) * n);
+  return Ray::fromOriginAndDirection(pos, r);
+}
+
+inline Ray
+getRefractedRay(Primitive *z, Vec3 &pos, Ray &ray)
+{
+  Vec3 r, n, u;
+  double cost1, cost2, to_mu, fr_mu;
+
+  u = ray.direction();
+  u.normalize();
+  n = z->calculateNormal(pos);
+
+  if (ray.mu() < 1 + EPS) {
+    to_mu = z->getMaterial().getMTN();
+    fr_mu = 1;
+  } else {
+    to_mu = 1;
+    fr_mu = z->getMaterial().getMTN();
+    n = -n;
+  }
+
+  cost1 = - (u * n);
+  cost2 = sqrt(1 - ((fr_mu/to_mu) * (fr_mu/to_mu) * (1 - cost1*cost1)));
+  r = (fr_mu/to_mu)*u + (((cost1 * fr_mu)/to_mu) - cost2)*n;
+
+  return Ray::fromOriginAndDirection(pos, r, std::numeric_limits<double>::infinity(), to_mu);
+}
 // Raytrace a single ray backwards into the scene, calculating the total color (summed up over all reflections/refractions) seen
 // along this ray.
 RGB
@@ -82,29 +119,30 @@ traceRay(Ray & ray, int depth)
   auto z = world->intersect(ray);
 
   if (z != NULL) {
-
-    Vec3 r, n, i, pos;
-    Ray refl;
-    
     // intersection point
-    pos = ray.getPos(ray.minT());
+    auto pos = ray.getPos(ray.minT());
     // get color at that point
     auto col = getShadedColor(*z, pos, ray);
-
-    // calculate reflected ray
-    n = z->calculateNormal(pos);
-    i = ray.direction();
-    r = i - 2*((i * n) * n);
-    refl = Ray::fromOriginAndDirection(pos, r);
-
-    // add color of reflected ray
-    col += z->getMaterial().getMR() * z->getColor() * traceRay(refl, depth+1);
-    return col;
-
-  } else {
     
-    return RGB(0, 0, 0);
+    // reflection (take only if outside primitives)
+    if (ray.mu() < 1 + EPS)
+    {
+      Ray refl = getReflectedRay(z, pos, ray);
+      col += z->getMaterial().getMR() * z->getColor() * traceRay(refl, depth+1);
+    }
+
+    // refraction
+    if (z->getMaterial().getMT() > 0)
+    {
+      Ray refr = getRefractedRay(z, pos, ray);
+      auto ss = z->getMaterial().getMT() * traceRay(refr, depth+1);
+      col += ss;
+    }
+
+    return col;
   }
+    
+  return RGB(0, 0, 0);
 }
 
 // Main rendering loop.

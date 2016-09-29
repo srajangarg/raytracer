@@ -7,6 +7,7 @@
  */
 
 #include "Primitives.hpp"
+#define EPS 1e-6
 
 Primitive::Primitive(RGB const & c, Material const & m, Mat4 const & modelToWorld)
 {
@@ -44,7 +45,10 @@ Sphere::intersect(Ray & ray) const
   dis = std::sqrt(dis);
   t = ((-d*s) - dis)/d.length2();
 
-  if (t > 0 and ray.minT() > t)
+  if (t < -EPS)
+    t = ((-d*s) + dis)/d.length2();
+
+  if (t > EPS and ray.minT() > t)
   {
     ray.setMinT(t);
     return true;
@@ -93,7 +97,7 @@ Triangle::intersect(Ray & ray) const
   //if determinant is near zero, ray lies in plane of triangle or ray is parallel to plane of triangle
   det = e1 * P;
 
-  if(det > -1e-5 && det < 1e-5) return false;
+  if(det > -EPS and det < EPS) return false;
   inv_det = 1.0 / det;
 
   //calculate distance from V1 to ray origin
@@ -102,7 +106,7 @@ Triangle::intersect(Ray & ray) const
   //Calculate u parameter and test bound
   u = T * P * inv_det;
   //The intersection lies outside of the triangle
-  if(u < 0 || u > 1) return false;
+  if(u < 0 or u > 1) return false;
 
   //Prepare to test v parameter
   Q = T ^ e1;
@@ -110,11 +114,11 @@ Triangle::intersect(Ray & ray) const
   //Calculate V parameter and test bound
   v = new_ray.direction() * Q * inv_det;
   //The intersection lies outside of the triangle
-  if(v < 0 || u + v  > 1) return false;
+  if(v < 0 or u + v  > 1) return false;
 
   t = e2 * Q * inv_det;
 
-  if (t > 0 and ray.minT() > t)
+  if (t > EPS and ray.minT() > t)
   {
     ray.setMinT(t);
     return true;
@@ -127,5 +131,5 @@ Vec3
 Triangle::calculateNormal(Vec3 const & position) const
 {
   Vec3 norm = (verts[2] - verts[0]) ^ (verts[1] - verts[0]);
-  return Vec3(worldToModel_.transpose() * Vec4(norm, 0), 3).normalize();;
+  return Vec3(worldToModel_.transpose() * Vec4(norm, 0), 3).normalize();
 }
