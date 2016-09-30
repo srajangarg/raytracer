@@ -64,7 +64,7 @@ AmbientLight::getIncidenceVector(Vec3 const & position) const
   throw "AMBIENT LIGHTS DO NOT HAVE A SENSE OF DIRECTION OR POSITION`";
 }
 
-Ray AmbientLight::getShadowRay(Vec3 const & position, bool & use_dist) const
+vector<Ray> AmbientLight::getShadowRays(Vec3 const & position, bool & use_dist) const
 {
   throw "AMBIENT LIGHTS DO NOT HAVE A SENSE OF DIRECTION OR POSITION";
 }
@@ -99,11 +99,56 @@ PointLight::getIncidenceVector(Vec3 const & position) const
   return (pos_ - position).normalize();
 }
 
-Ray
-PointLight::getShadowRay(Vec3 const & position, bool & use_dist) const
+vector<Ray>
+PointLight::getShadowRays(Vec3 const & position, bool & use_dist) const
 {
   use_dist = true;
-  return Ray::fromOriginAndEnd(position, pos_);
+  vector<Ray> v = {Ray::fromOriginAndEnd(position, pos_)};
+  return v;
+}
+
+AreaLight::AreaLight(RGB const & illumination) : Light(illumination)
+{
+  // intentionally empty
+}
+
+AreaLight::AreaLight(RGB const & illumination, double falloff, double dead_distance, double offset)
+: Light(illumination, falloff, dead_distance)
+{
+  offset_ = offset;
+}
+
+RGB
+AreaLight::getColor(Vec3 const & p) const
+{
+  // return attenuated light
+  return illumination_ / pow((p - pos_).length() + dead_distance_, falloff_);
+}
+
+void
+AreaLight::setPosition(Vec3 const & pos)
+{
+  pos_ = pos;
+}
+
+Vec3
+AreaLight::getIncidenceVector(Vec3 const & position) const
+{ 
+  return (pos_ - position).normalize();
+}
+
+vector<Ray>
+AreaLight::getShadowRays(Vec3 const & position, bool & use_dist) const
+{
+  use_dist = true;
+  vector<Ray> v;
+
+  for (double i = -1; i < 2; i++)
+    for (double j = -1; j < 2; j++)
+        for (double k = -1; k < 2; k++)
+          v.push_back(Ray::fromOriginAndEnd(position, pos_ 
+                                          + Vec3(i*offset_, j*offset_, k*offset_)));
+  return v;
 }
 
 DirectionalLight::DirectionalLight(RGB const & illumination) : Light(illumination)
@@ -124,9 +169,10 @@ DirectionalLight::getIncidenceVector(Vec3 const & position) const
   return -dir_;
 }
 
-Ray
-DirectionalLight::getShadowRay(Vec3 const & position, bool & use_dist) const
+vector<Ray>
+DirectionalLight::getShadowRays(Vec3 const & position, bool & use_dist) const
 {
   use_dist = false;
-  return Ray::fromOriginAndDirection(position, -dir_);
+  vector<Ray> v = {Ray::fromOriginAndDirection(position, -dir_)};
+  return v;
 }

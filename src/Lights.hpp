@@ -10,6 +10,8 @@
 #define __Lights_hpp__
 
 #include "Globals.hpp"
+#include <vector>
+using namespace std;
 
 /** Interface for a light. */
 class Light
@@ -49,7 +51,7 @@ class Light
      * vector is arbitrary, and use_dist is set to false, indicating that the distance (i.e. time) check should be ignored --
      * all positive hit times indicate shadowing.
      */
-    virtual Ray getShadowRay(Vec3 const & position, bool & use_dist) const = 0;
+    virtual vector<Ray> getShadowRays(Vec3 const & position, bool & use_dist) const = 0;
 };
 
 /** Ambient light, constant throughout the scene. */
@@ -60,7 +62,7 @@ class AmbientLight : public Light
     AmbientLight(RGB const & illumination);
 
     Vec3 getIncidenceVector(Vec3 const & position) const;
-    Ray getShadowRay(Vec3 const & position, bool & use_dist) const;
+    vector<Ray> getShadowRays(Vec3 const & position, bool & use_dist) const;
 };
 
 /** Point light, with a fixed location in the scene. */
@@ -73,7 +75,7 @@ class PointLight : public Light
 
     RGB getColor(Vec3 const & p) const;
     Vec3 getIncidenceVector(Vec3 const & position) const;
-    Ray getShadowRay(Vec3 const & position, bool & use_dist) const;
+    vector<Ray> getShadowRays(Vec3 const & position, bool & use_dist) const;
 
   private:
     Vec3 pos_;
@@ -87,10 +89,27 @@ class DirectionalLight : public Light
     void setDirection(Vec3 const & dir);
 
     Vec3 getIncidenceVector(Vec3 const & position) const;
-    Ray getShadowRay(Vec3 const & position, bool & use_dist) const;
+    vector<Ray> getShadowRays(Vec3 const & position, bool & use_dist) const;
 
   private:
     Vec3 dir_;
+};
+
+/** Area light, consists of multiple Point lights. */
+class AreaLight : public Light
+{
+  public:
+    AreaLight(RGB const & illumination);
+    AreaLight(RGB const & illumination, double falloff, double dead_distance, double offset);
+    void setPosition(Vec3 const & pos);
+
+    RGB getColor(Vec3 const & p) const;
+    Vec3 getIncidenceVector(Vec3 const & position) const;
+    vector<Ray> getShadowRays(Vec3 const & position, bool & use_dist) const;
+
+  private:
+    double offset_;
+    Vec3 pos_;
 };
 
 #endif  // __Lights_hpp__

@@ -836,6 +836,9 @@ void SceneLoader::setLightDefaults(SceneGroup * n)
     n->light_->color_->color_[2] = new ConstValue(0);
   }
 
+  if (n->light_->offset_ == NULL)
+    n->light_->offset_ = new ConstValue(.15);
+
   if (n->light_->deadDistance_ == NULL)
     n->light_->deadDistance_ = new ConstValue(.1);
 
@@ -914,6 +917,19 @@ bool SceneLoader::doLight(istream & str, string & name)
           {
             cleanAfter(values, 1);
             n->light_->deadDistance_ = values[0];
+          }
+        }
+        else if (cmd == "offset")
+        {
+          if (getValues(str, values) < 1)
+          {
+            *err << "offset with no parameters at ";
+            errLine(str.tellg());
+          }
+          else
+          {
+            cleanAfter(values, 1);
+            n->light_->offset_ = values[0];
           }
         }
         else if (cmd == "angularfalloff")
@@ -1144,7 +1160,6 @@ bool SceneLoader::buildScene(string filename)
   buildEndlineTable(filename);
   ifstream file(filename.c_str());
   string line;
-  int lastPos = 0;
 
   while (findOpenParen(file))
   {
@@ -1261,8 +1276,6 @@ bool SceneLoader::buildScene(string filename)
     else
     {
     }
-
-    lastPos = file.tellg();
   }
 
   return true;

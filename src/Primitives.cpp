@@ -7,7 +7,7 @@
  */
 
 #include "Primitives.hpp"
-#define EPS 1e-6
+#define EPS 1e-4
 
 Primitive::Primitive(RGB const & c, Material const & m, Mat4 const & modelToWorld)
 {
@@ -89,8 +89,8 @@ Triangle::intersect(Ray & ray) const
   new_ray.transform(worldToModel_);
 
   //Find vectors for two edges sharing V1
-  e1 = verts[2] - verts[0];
-  e2 = verts[3] - verts[0];
+  e1 = verts[1] - verts[0];
+  e2 = verts[2] - verts[0];
 
   //Begin calculating determinant - also used to calculate u parameter
   P = new_ray.direction() ^ e2;
@@ -130,6 +130,6 @@ Triangle::intersect(Ray & ray) const
 Vec3
 Triangle::calculateNormal(Vec3 const & position) const
 {
-  Vec3 norm = (verts[2] - verts[0]) ^ (verts[1] - verts[0]);
+  Vec3 norm = (verts[1] - verts[0]) ^ (verts[2] - verts[0]);
   return Vec3(worldToModel_.transpose() * Vec4(norm, 0), 3).normalize();
 }

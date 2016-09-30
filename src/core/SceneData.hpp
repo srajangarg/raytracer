@@ -352,10 +352,12 @@ class ParametricLight
     ParametricValue * falloff_;
     ParametricValue * angularFalloff_;
     ParametricValue * deadDistance_;
+    ParametricValue * offset_;
     friend class SceneLoader;
 
   public:
-    ParametricLight() : type_(NULL), color_(NULL), falloff_(NULL), angularFalloff_(NULL), deadDistance_(NULL) {}
+    ParametricLight() : type_(NULL), color_(NULL), falloff_(NULL), angularFalloff_(NULL), 
+                        deadDistance_(NULL), offset_(NULL) {}
     ~ParametricLight()
     {
       delete type_;
@@ -363,13 +365,15 @@ class ParametricLight
       delete falloff_;
       delete angularFalloff_;
       delete deadDistance_;
+      delete offset_;
     }
 
     LightInfo getLight(int time)
     {
       return LightInfo((int)type_->getValue(time),
                        color_->getColor(time), falloff_->getValue(time),
-                       angularFalloff_->getValue(time), deadDistance_->getValue(time));
+                       angularFalloff_->getValue(time), deadDistance_->getValue(time),
+                       offset_->getValue(time));
     }
 };
 

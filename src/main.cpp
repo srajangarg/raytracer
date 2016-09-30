@@ -4,7 +4,7 @@
 #include "Frame.hpp"
 #include "Lights.hpp"
 #include "core/Scene.hpp"
-#define EPS 1e-6
+#define EPS 5e-4
 using namespace std;
 
 //****************************************************
@@ -34,22 +34,43 @@ getShadedColor(Primitive const & primitive, Vec3 const & pos, Ray const & ray)
   double ml = primitive.getMaterial().getML();
   double msp = primitive.getMaterial().getMSP();
   double msm = primitive.getMaterial().getMSM();
+  double reach_light, ratio = 0, trans;
   
   // ambient component : Ma * C * A
   amb = ma * C * world->getAmbientLightColor();
   
   for (auto it = world->lightsBegin(); it != world->lightsEnd(); it++)
-  { 
+  {  
+    trans = 1;
     auto light = *it;
-    auto shadow = light->getShadowRay(pos, use_dist);
-    auto inter = world->intersect(shadow);
+    vector<Ray> shadows = light->getShadowRays(pos, use_dist);
 
-    // an intersection occured, don't add up spec and lamb components
-    if (inter != NULL){
-      if (not use_dist or (shadow.minT() > 0 and shadow.minT() < 1)) {
-        continue;
+    reach_light = 0;
+    for (auto shadow : shadows)
+    {
+      auto inter = world->intersect(shadow);
+
+      if (inter != NULL)
+      {   
+        if (not use_dist or (shadow.minT() > 0 and shadow.minT() < 1))
+        {
+
+          if (inter->getMaterial().getMT() > EPS)
+          {
+            trans = inter->getMaterial().getMT();
+          }
+          else
+          {
+            reach_light--;
+          }
+        }
       }
+      reach_light++;
     }
+
+    ratio = reach_light / (double) shadows.size();
+    if (ratio < EPS)
+      continue;
 
     // normal and incidence vectors, light color
     n = primitive.calculateNormal(pos);
@@ -57,7 +78,7 @@ getShadedColor(Primitive const & primitive, Vec3 const & pos, Ray const & ray)
     I = light->getColor(pos);
 
     // lambertian component : Ml * C * I * max(i.n, 0)
-    lamb += ml * C * I * std::max(i * n, (double)0);
+    lamb += trans * ratio * ml * C * I * std::max(i * n, (double)0);
 
     // S                    : Msm * C + (1-Msm) * RBG(1, 1, 1)  
     // r                    : 2(i.n)n  - i   
@@ -67,7 +88,7 @@ getShadedColor(Primitive const & primitive, Vec3 const & pos, Ray const & ray)
     u.normalize();
 
     // specular component   : Ms * S * I * (max(-r.u, 0))^Msp                 
-    spec += ms * S * I * pow(std::max(-r*u, (double)0), msp);
+    spec += trans * ratio * ms * S * I * pow(std::max(-r*u, (double)0), msp);
   }
 
   return amb + spec + lamb;
@@ -80,7 +101,7 @@ getReflectedRay(Primitive *z, Vec3 &pos, Ray &ray)
   n = z->calculateNormal(pos);
   i = ray.direction();
   r = i - 2*((i * n) * n);
-  return Ray::fromOriginAndDirection(pos, r);
+  return Ray::fromOriginAndDirection(pos + EPS*r, r);
 }
 
 inline Ray
@@ -103,28 +124,31 @@ getRefractedRay(Primitive *z, Vec3 &pos, Ray &ray)
   }
 
   cost1 = - (u * n);
-  cost2 = sqrt(1 - ((fr_mu/to_mu) * (fr_mu/to_mu) * (1 - cost1*cost1)));
+  double zz = 1 - ((fr_mu/to_mu) * (fr_mu/to_mu) * (1 - cost1*cost1));
+  if (zz < 0)
+    cout<<zz<<endl;
+  cost2 = sqrt(zz);
   r = (fr_mu/to_mu)*u + (((cost1 * fr_mu)/to_mu) - cost2)*n;
 
-  return Ray::fromOriginAndDirection(pos, r, std::numeric_limits<double>::infinity(), to_mu);
+  return Ray::fromOriginAndDirection(pos + EPS*r, r, std::numeric_limits<double>::infinity(), to_mu);
 }
 // Raytrace a single ray backwards into the scene, calculating the total color (summed up over all reflections/refractions) seen
 // along this ray.
 RGB
 traceRay(Ray & ray, int depth)
-{
+{   
   if (depth > max_trace_depth)
     return RGB(0, 0, 0);
 
   auto z = world->intersect(ray);
 
   if (z != NULL) {
+
     // intersection point
     auto pos = ray.getPos(ray.minT());
     // get color at that point
     auto col = getShadedColor(*z, pos, ray);
-    
-    // reflection (take only if outside primitives)
+
     if (ray.mu() < 1 + EPS)
     {
       Ray refl = getReflectedRay(z, pos, ray);
@@ -135,8 +159,7 @@ traceRay(Ray & ray, int depth)
     if (z->getMaterial().getMT() > 0)
     {
       Ray refr = getRefractedRay(z, pos, ray);
-      auto ss = z->getMaterial().getMT() * traceRay(refr, depth+1);
-      col += ss;
+      col += z->getMaterial().getMT() * traceRay(refr, depth+1);
     }
 
     return col;
@@ -234,6 +257,13 @@ importSceneToWorld(SceneInstance * inst, Mat4 localToWorld, int time)
     else if (l.type == LIGHT_POINT)
     {
       PointLight * li = new PointLight(l.color, l.falloff, l.deadDistance);
+      Vec3 pos(0, 0, 0);
+      li->setPosition(localToWorld * pos);
+      world->addLight(li);
+    }
+    else if (l.type == LIGHT_AREA)
+    { 
+      AreaLight * li = new AreaLight(l.color, l.falloff, l.deadDistance, l.offset);
       Vec3 pos(0, 0, 0);
       li->setPosition(localToWorld * pos);
       world->addLight(li);
