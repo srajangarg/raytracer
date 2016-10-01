@@ -109,7 +109,9 @@ class Triangle : public Primitive
 
     bool intersect(Ray & ray) const;
     Vec3 calculateNormal(Vec3 const & position) const;
+    Vec3 calculateFaceNormal() const;
     AABB getBoundingBox() const;
+    Vec3 norms[3];
 
   private:
     Vec3 verts[3];

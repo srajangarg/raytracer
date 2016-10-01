@@ -4,6 +4,7 @@
 #include "Frame.hpp"
 #include "Lights.hpp"
 #include "core/Scene.hpp"
+#include <unordered_map>
 #define EPS 5e-4
 using namespace std;
 
@@ -45,27 +46,14 @@ getShadedColor(Primitive const & primitive, Vec3 const & pos, Ray const & ray)
     auto light = *it;
     vector<Ray> shadows = light->getShadowRays(pos, use_dist);
 
-    reach_light = 0;
+    reach_light = shadows.size();
     for (auto shadow : shadows)
     {
       auto inter = world->intersect(shadow);
 
       if (inter != NULL)
-      {   
         if (not use_dist or (shadow.minT() > 0 and shadow.minT() < 1))
-        {
-
-          if (inter->getMaterial().getMT() > EPS)
-          {
-            trans = inter->getMaterial().getMT();
-          }
-          else
-          {
             reach_light--;
-          }
-        }
-      }
-      reach_light++;
     }
 
     ratio = reach_light / (double) shadows.size();
@@ -285,12 +273,13 @@ importSceneToWorld(SceneInstance * inst, Mat4 localToWorld, int time)
   }
 
   TriangleMesh * t;
+  unordered_map<MeshVertex*, vector<pair<Triangle*, int>> > vertexToTriangles;
 
   if (g->computeMesh(t, m, time))
   {
     Material mat(m.k[0], m.k[1], m.k[2], m.k[3], m.k[4], m.k[MAT_MS], m.k[5], m.k[6]);
 
-    for (vector<MeshTriangle *>::iterator it = t->triangles.begin(); it != t->triangles.end(); ++it)
+    for (auto it = t->triangles.begin(); it != t->triangles.end(); ++it)
     {
       Triangle * tri = new Triangle(
         t->vertices[ (**it).ind[0] ]->pos,
@@ -298,6 +287,25 @@ importSceneToWorld(SceneInstance * inst, Mat4 localToWorld, int time)
         t->vertices[ (**it).ind[2] ]->pos,
         m.color, mat, localToWorld);
       world->addPrimitive(tri);
+
+      for (int i = 0; i < 3; ++i)
+      {
+        if(vertexToTriangles.find(t->vertices[(**it).ind[i]]) == vertexToTriangles.end())
+          vertexToTriangles[t->vertices[(**it).ind[i]]] = {make_pair(tri, i)};
+        else
+          vertexToTriangles[t->vertices[(**it).ind[i]]].push_back(make_pair(tri, i));
+      }
+    }
+
+    std::cout << "Pre calculating triangle mesh normals!" << std::endl;
+    for (auto it = vertexToTriangles.begin(); it != vertexToTriangles.end(); it++)
+    {
+      Vec3 res(0, 0, 0);
+      for (auto tripair : it->second)
+        res += tripair.first->calculateFaceNormal();
+      res.normalize();
+      for (auto tripair : it->second)
+          tripair.first->norms[tripair.second] = res;
     }
   }
 

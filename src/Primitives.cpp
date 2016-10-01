@@ -5,7 +5,7 @@
  *      Author: njoubert
  *      Modified: sidch
  */
-
+#include <iostream>
 #include "Primitives.hpp"
 #define EPS 1e-4
 
@@ -129,6 +129,21 @@ Triangle::intersect(Ray & ray) const
 
 Vec3
 Triangle::calculateNormal(Vec3 const & position) const
+{ 
+  Vec3 pos = worldToModel_ * position;
+  double a[3];
+  for (int i = 0; i < 3; ++i)
+    a[i] = ((verts[(i+1)%3] - pos) ^ (verts[(i+2)%3] - pos)).length();
+
+  Vec3 norm = Vec3(0, 0, 0);
+  for (int i = 0; i < 3; ++i)
+    norm += a[i] * norms[i];
+
+  return Vec3(worldToModel_.transpose() * Vec4(norm, 0), 3).normalize();
+}
+
+Vec3
+Triangle::calculateFaceNormal() const
 {
   Vec3 norm = (verts[1] - verts[0]) ^ (verts[2] - verts[0]);
   return Vec3(worldToModel_.transpose() * Vec4(norm, 0), 3).normalize();
