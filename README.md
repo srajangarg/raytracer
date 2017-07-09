@@ -8,7 +8,9 @@ Features :
 	- 	teapot.png : We can see the teapot rendered with two lights, one blue directional 
 					 and a red point light
 
-![GitHub Logo](/images/dunkit.png | width=100) ![GitHub Logo](/images/teapot.png | width=100)
+	<img src="/images/dunkit.png" width="45%">	<img src="/images/teapot.png" width="45%">
+
+
 
 2.
 	Refraction : Implemented basic refraction and rendered two scenes showcasing the same
@@ -17,7 +19,10 @@ Features :
 	- 	refr1.png : A glass sphere further away with refractive index 2.5
 	- 	refr2.png : A glass sphere further away with refractive index 3
 
-	![GitHub Logo](/images/refr1.png) ![GitHub Logo](/images/refr2.png)
+	<img src="/images/refr1.png" width="45%">	<img src="/images/refr2.png" width="45%">
+
+
+
 3.
 	Area Lights : Implemented area lights as a set of 27 (fixed) number of point lights
 	aligned in a cubical 3x3 fashion. The area light is a new type (class) of light which has all
@@ -34,7 +39,9 @@ Features :
 	- 	area_0.15.png : Rendering with offset = 0.15 (soft shadows)
 	- 	area_0.25.png : Rendering with offset = 0.25 (softer shadows)
 
-	![GitHub Logo](/images/area_0.00.png) ![GitHub Logo](/images/area_0.15.png) ![GitHub Logo](/images/area_0.25.png)
+	<img src="/images/area_0.00.png" width="32%">	<img src="/images/area_0.15.png" width="32%"> <img src="/images/area_0.25.png" width="32%">
+
+
 
 4.
 	Smooth normals for Triangle meshes : I create a map from each vertex to the triangles
@@ -46,8 +53,8 @@ Features :
 	- 	dunkit_smooth.png : Smoothed version of the old ring like items
 	- 	teapot_smooth.png : Smoothed version of the old teapot (looks really nice!)
 
-	![GitHub Logo](/images/dunkit.png) ![GitHub Logo](/images/dunkit_smooth.png) 
-	![GitHub Logo](/images/teapot.png) ![GitHub Logo](/images/teapot_smooth.png)
+	<img src="/images/dunkit.png" width="45%">	<img src="/images/dunkit_smooth.png" width="45%">
+	<img src="/images/teapot.png" width="45%">	<img src="/images/teapot_smooth.png" width="45%">
 
 Commands :
 ```
