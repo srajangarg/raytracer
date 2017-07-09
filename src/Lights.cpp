@@ -143,6 +143,7 @@ AreaLight::getShadowRays(Vec3 const & position, bool & use_dist) const
   use_dist = true;
   vector<Ray> v;
 
+  // generated rays from position to all the offset point lights
   for (double i = -1; i < 2; i++)
     for (double j = -1; j < 2; j++)
         for (double k = -1; k < 2; k++)

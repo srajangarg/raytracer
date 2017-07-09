@@ -105,7 +105,8 @@ class Triangle : public Primitive
 {
   public:
     /** Constructor. */
-    Triangle(Vec3 const & v0, Vec3 const & v1, Vec3 const & v2, RGB const & c, Material const & m, Mat4 const & modelToWorld);
+    Triangle(Vec3 const & v0, Vec3 const & v1, Vec3 const & v2, RGB const & c, 
+             Material const & m, Mat4 const & modelToWorld, bool smooth);
 
     bool intersect(Ray & ray) const;
     Vec3 calculateNormal(Vec3 const & position) const;
@@ -114,6 +115,7 @@ class Triangle : public Primitive
     Vec3 norms[3];
 
   private:
+    bool smooth_normals;
     Vec3 verts[3];
 };
 

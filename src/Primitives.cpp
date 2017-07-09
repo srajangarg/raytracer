@@ -71,12 +71,13 @@ Sphere::calculateNormal(Vec3 const & position) const
 //=============================================================================================================================
 
 Triangle::Triangle(Vec3 const & v0, Vec3 const & v1, Vec3 const & v2, RGB const & c, Material const & m,
-                   Mat4 const & modelToWorld)
+                   Mat4 const & modelToWorld, bool smooth)
 : Primitive(c, m, modelToWorld)
 {
   verts[0] = v0;
   verts[1] = v1;
   verts[2] = v2;
+  smooth_normals = smooth;
 }
 
 bool
@@ -88,32 +89,32 @@ Triangle::intersect(Ray & ray) const
   Ray new_ray = ray;
   new_ray.transform(worldToModel_);
 
-  //Find vectors for two edges sharing V1
+  // dind vectors for two edges sharing V1
   e1 = verts[1] - verts[0];
   e2 = verts[2] - verts[0];
 
-  //Begin calculating determinant - also used to calculate u parameter
+  // begin calculating determinant - also used to calculate u parameter
   P = new_ray.direction() ^ e2;
-  //if determinant is near zero, ray lies in plane of triangle or ray is parallel to plane of triangle
+  // if determinant is near zero, ray lies in plane of triangle or ray is parallel to plane of triangle
   det = e1 * P;
 
   if(det > -EPS and det < EPS) return false;
   inv_det = 1.0 / det;
 
-  //calculate distance from V1 to ray origin
+  // calculate distance from V1 to ray origin
   T = new_ray.start() - verts[0];
 
-  //Calculate u parameter and test bound
+  // calculate u parameter and test bound
   u = T * P * inv_det;
-  //The intersection lies outside of the triangle
+  // the intersection lies outside of the triangle
   if(u < 0 or u > 1) return false;
 
-  //Prepare to test v parameter
+  // prepare to test v parameter
   Q = T ^ e1;
 
-  //Calculate V parameter and test bound
+  // Ccalculate V parameter and test bound
   v = new_ray.direction() * Q * inv_det;
-  //The intersection lies outside of the triangle
+  // the intersection lies outside of the triangle
   if(v < 0 or u + v  > 1) return false;
 
   t = e2 * Q * inv_det;
@@ -131,13 +132,24 @@ Vec3
 Triangle::calculateNormal(Vec3 const & position) const
 { 
   Vec3 pos = worldToModel_ * position;
-  double a[3];
-  for (int i = 0; i < 3; ++i)
-    a[i] = ((verts[(i+1)%3] - pos) ^ (verts[(i+2)%3] - pos)).length();
+  Vec3 norm(0, 0, 0);
 
-  Vec3 norm = Vec3(0, 0, 0);
-  for (int i = 0; i < 3; ++i)
-    norm += a[i] * norms[i];
+  if (smooth_normals) {
+
+    // get the areas of each of the subtriangles, as divided by pos
+    double a[3];
+    for (int i = 0; i < 3; ++i)
+      a[i] = ((verts[(i+1)%3] - pos) ^ (verts[(i+2)%3] - pos)).length();
+
+    // weigh the normals according to these areas
+    for (int i = 0; i < 3; ++i)
+      norm += a[i] * norms[i];
+
+  } else {
+
+    // simple normal to the triangle
+    norm = (verts[1] - verts[0]) ^ (verts[2] - verts[0]);
+  }
 
   return Vec3(worldToModel_.transpose() * Vec4(norm, 0), 3).normalize();
 }
@@ -146,5 +158,5 @@ Vec3
 Triangle::calculateFaceNormal() const
 {
   Vec3 norm = (verts[1] - verts[0]) ^ (verts[2] - verts[0]);
-  return Vec3(worldToModel_.transpose() * Vec4(norm, 0), 3).normalize();
+  return norm.normalize();
 }

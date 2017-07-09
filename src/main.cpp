@@ -18,6 +18,7 @@ View * view = NULL;
 Mat4 viewToWorld = identity3D();
 Frame * frame = NULL;
 int max_trace_depth = 2;
+bool smooth_normals = false;
 
 // Get the shaded appearance of the primitive at a given position, as seen along a ray. The returned value should be the sum of
 // the shaded colors w.r.t. each light in the scene. DO NOT include the result of recursive raytracing in this function, just
@@ -45,18 +46,26 @@ getShadedColor(Primitive const & primitive, Vec3 const & pos, Ray const & ray)
     trans = 1;
     auto light = *it;
     vector<Ray> shadows = light->getShadowRays(pos, use_dist);
-
     reach_light = shadows.size();
+
+    // iterate over shadows
     for (auto shadow : shadows)
     {
       auto inter = world->intersect(shadow);
 
-      if (inter != NULL)
-        if (not use_dist or (shadow.minT() > 0 and shadow.minT() < 1))
+      if (inter != NULL) {
+        // if the light is passing through a transparent object, consider it
+        if (inter->getMaterial().getMT() > 0)
+            trans = inter->getMaterial().getMT();
+        // else decrease the number of shadow rays reaching the object
+        else if (not use_dist or (shadow.minT() > 0 and shadow.minT() < 1))
             reach_light--;
+      }
     }
 
+    // how many shadow rays did not collide
     ratio = reach_light / (double) shadows.size();
+    // if none of them passed thorugh, skip lambertian and specular
     if (ratio < EPS)
       continue;
 
@@ -102,6 +111,7 @@ getRefractedRay(Primitive *z, Vec3 &pos, Ray &ray)
   u.normalize();
   n = z->calculateNormal(pos);
 
+  // is the ray entering the primitve or leaving it?
   if (ray.mu() < 1 + EPS) {
     to_mu = z->getMaterial().getMTN();
     fr_mu = 1;
@@ -111,11 +121,9 @@ getRefractedRay(Primitive *z, Vec3 &pos, Ray &ray)
     n = -n;
   }
 
+  // refraction formulas
   cost1 = - (u * n);
-  double zz = 1 - ((fr_mu/to_mu) * (fr_mu/to_mu) * (1 - cost1*cost1));
-  if (zz < 0)
-    cout<<zz<<endl;
-  cost2 = sqrt(zz);
+  cost2 = sqrt(1 - ((fr_mu/to_mu) * (fr_mu/to_mu) * (1 - cost1*cost1)));
   r = (fr_mu/to_mu)*u + (((cost1 * fr_mu)/to_mu) - cost2)*n;
 
   return Ray::fromOriginAndDirection(pos + EPS*r, r, std::numeric_limits<double>::infinity(), to_mu);
@@ -137,11 +145,9 @@ traceRay(Ray & ray, int depth)
     // get color at that point
     auto col = getShadedColor(*z, pos, ray);
 
-    if (ray.mu() < 1 + EPS)
-    {
-      Ray refl = getReflectedRay(z, pos, ray);
-      col += z->getMaterial().getMR() * z->getColor() * traceRay(refl, depth+1);
-    }
+    // reflection
+    Ray refl = getReflectedRay(z, pos, ray);
+    col += z->getMaterial().getMR() * z->getColor() * traceRay(refl, depth+1);
 
     // refraction
     if (z->getMaterial().getMT() > 0)
@@ -285,27 +291,36 @@ importSceneToWorld(SceneInstance * inst, Mat4 localToWorld, int time)
         t->vertices[ (**it).ind[0] ]->pos,
         t->vertices[ (**it).ind[1] ]->pos,
         t->vertices[ (**it).ind[2] ]->pos,
-        m.color, mat, localToWorld);
+        m.color, mat, localToWorld, smooth_normals);
       world->addPrimitive(tri);
 
-      for (int i = 0; i < 3; ++i)
+      if (smooth_normals)
       {
-        if(vertexToTriangles.find(t->vertices[(**it).ind[i]]) == vertexToTriangles.end())
-          vertexToTriangles[t->vertices[(**it).ind[i]]] = {make_pair(tri, i)};
-        else
-          vertexToTriangles[t->vertices[(**it).ind[i]]].push_back(make_pair(tri, i));
+        // map vertex to which triangles this verttex belongs to
+        for (int i = 0; i < 3; ++i)
+        {
+          if(vertexToTriangles.find(t->vertices[(**it).ind[i]]) == vertexToTriangles.end())
+            vertexToTriangles[t->vertices[(**it).ind[i]]] = {make_pair(tri, i)};
+          else
+            vertexToTriangles[t->vertices[(**it).ind[i]]].push_back(make_pair(tri, i));
+        }
       }
     }
 
-    std::cout << "Pre calculating triangle mesh normals!" << std::endl;
-    for (auto it = vertexToTriangles.begin(); it != vertexToTriangles.end(); it++)
+    if (smooth_normals)
     {
-      Vec3 res(0, 0, 0);
-      for (auto tripair : it->second)
-        res += tripair.first->calculateFaceNormal();
-      res.normalize();
-      for (auto tripair : it->second)
-          tripair.first->norms[tripair.second] = res;
+      // calculate average normal at each vertex, and place them at norms
+      // in each of the respective triangles
+      for (auto it : vertexToTriangles)
+      { 
+          Vec3 res(0, 0, 0);
+
+          for (auto tripair : it.second)
+            res += tripair.first->calculateFaceNormal();
+          res.normalize();
+          for (auto tripair : it.second)
+              tripair.first->norms[tripair.second] = res;
+      }
     }
   }
 
@@ -323,8 +338,12 @@ main(int argc, char ** argv)
 
   if (argc >= 4)
     max_trace_depth = atoi(argv[3]);
+  if (argc >= 5)
+    smooth_normals = (atoi(argv[4]) == 1);
 
   cout << "Max trace depth = " << max_trace_depth << endl;
+  if (smooth_normals)
+    cout << "Using smooth normals for triangle meshes" << endl;
 
   // Load the scene from the disk file
   scene = new Scene(argv[1]);
