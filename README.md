@@ -8,7 +8,7 @@ Features :
 	- 	teapot.png : We can see the teapot rendered with two lights, one blue directional 
 					 and a red point light
 
-![GitHub Logo](/images/dunkit.png) ![GitHub Logo](/images/teapot.png)
+![GitHub Logo](/images/dunkit.png | width=100) ![GitHub Logo](/images/teapot.png | width=100)
 
 2.
 	Refraction : Implemented basic refraction and rendered two scenes showcasing the same
@@ -50,7 +50,7 @@ Features :
 	![GitHub Logo](/images/teapot.png) ![GitHub Logo](/images/teapot_smooth.png)
 
 Commands :
-
+```
 1.	
 
 	../trace dunkit.scd ../images/dunkit.png 2 				(40 s)
@@ -68,4 +68,4 @@ Commands :
 4.
 	../trace dunkit.scd ../images/dunkit_smooth.png 1 1		(40 s)
 	../trace teapot.scd ../images/teapot_smooth.png 1 1 	(5m 20s)
-
+```
